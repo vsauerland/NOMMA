@@ -405,259 +405,6 @@ double lpav( int N, int sign, double L, double *td, double *xd, double *xr, bool
 	return( r );
 }
 
-
-/**************** ROUTINES THAT (OPTIONALLY) USE CPLEX **********************/
-
-double isoReg( int N, int sign, double *td, double *xd, double *xr )
-// regression by an isotonic function (using QP formulation and CPLEX)
-// The Pool Adjacency Violators Algorithm "PAV" does the same faster
-//
-// INPUT
-// N: length of the time series that is to be fit
-// sign: indicates if fit must be monotonically increasing (sign=1)
-//       or monotonically decreasing (sign=-1)
-// td: time series times
-// xd: time series values
-// hd: optional offsets, i.e. we solve
-//        min_{xr} sum_{i in [N]}( xd_i - xr_i )^2
-//        s.t. xd_i <= xd_{i+1} <= xd_i
-//            [xd_i >= xd_{i+1} >= xd_i]
-// 
-// OUTPUT
-// xr: resulting data-fit time series
-{
-	if ( sign != -1 ) sign = 1;
-	IloEnv env;
-	IloModel model( env );
-	IloInt n = N;
-	IloNumVarArray x( env, n, -IloInfinity, IloInfinity );
-	//BUILD OBJECTIVE || x - xd ||^2
-	IloExpr obj( env );
-	for ( int i = 0; i < n; i++ )
-	{
-		obj = obj + x[ i ] * x[ i ]
-		          - 2 * xd[ i ] * x[ i ]
-		          + xd[ i ] * xd[ i ];
-	}
-	model.add( IloMinimize( env, obj ) );
-	//BUILD CONSTRAINTS x_i <= x_{i+1}
-	for ( int i = 0; i < n - 1; i++ )
-	{
-		if ( sign == 1 )
-		{
-			model.add( x[ i ] <= x[ i + 1 ] );
-		}
-		else
-		{
-			model.add( x[ i ] >= x[ i + 1 ] );
-		}
-	}
-	//SOLVE MODEL USING CPLEX
-	IloCplex cplex( model );
-	cplex.setOut( env.getNullStream() );
-	cplex.solve();
-	//OBTAIN/STATE SOLUTION
-	double f = ( double )cplex.getObjValue();
-	for ( int i = 0; i < n; i++ )
-	{
-			xr[ i ] = ( double )cplex.getValue( x[ i ] );
-	}
-	env.end();
-	return( f );
-}
-
-double slopeReg( int N1, int N2, double dMin, double dMax, double *td, double *xd, double *xr )
-// regression by a function that has limited slope
-// generalization of isoReg
-//
-// INPUT
-// dMin: supposed minimum first derivation of the regression function
-// dMax: supposed maximum first derivation of the regression function
-// td: time series times
-// xd: time series values
-//
-// OUTPUT
-// xr: resulting data-fit time series
-{
-	IloEnv env;
-	IloModel model( env );
-	IloInt n = N2 + 1 - N1;
-	IloNumVarArray x( env, n, -IloInfinity, IloInfinity );
-	//BUILD OBJECTIVE || x - xd  ||^2
-	IloExpr obj( env );
-	for ( int i = 0; i < n; i++ )
-	{
-		obj = obj + x[ i ] * x[ i ]
-		          - 2 * xd[ N1 + i ] * x[ i ]
-		          + xd[ N1 + i ] * xd[ N1 + i ];
-	}
-	model.add( IloMinimize( env, obj ) );
-	//BUILD CONSTRAINTS (apply discrete derivation limits)
-	for ( int i = 0; i < n - 1; i++ )
-	{
-		double c = 1 / ( td[ N1 + i + 1 ] - td[ N1 + i ] );
-		model.add( c * ( x[ i + 1 ] - x[ i ] ) >= dMin );
-		model.add( c * ( x[ i + 1 ] - x[ i ] ) <= dMax );
-	}
-	//SOLVE MODEL USING CPLEX
-	IloCplex cplex( model );
-	cplex.setOut( env.getNullStream() );
-	cplex.solve();
-	//OBTAIN/STATE SOLUTION
-	double f = ( double )cplex.getObjValue();
-	for ( int i = 0; i < n; i++ )
-	{
-			xr[ N1 + i ] = ( double )cplex.getValue( x[ i ] );
-	}
-	env.end();
-	return( f );
-}
-
-double minMaxReg( int N, int kMinA, int kMinB, int kMaxA, int kMaxB, int step, double dMin, double dMax, double T, double *td, double *xd, double *xr )
-// regression by a series that has limited slope
-// and exactly one local minimum and exactly one local maximum,
-// optionally being periodic
-//
-// INPUT
-// N:     time series length
-// kMinA, kMinB, kMaxA, kMaxB:
-//        minimum and maximum of the series are supposed to appear in the interval
-//        [kMinA, kMinB-1] and [kMaxA, kMaxB-1], repsectively
-// step:  step size used for sampling *td and *xd
-//        only important for experiments with restricted scopes for min/max
-// dMin:  supposed lower bound on the first derivation of the regression function
-// dMax:  supposed upper bound on the first derivation of the regression function
-// T:     period of the model
-//        for T > 0, the data is assumed to be the samples for one period T
-//        for T <= 0, the data is not assumed to cover a certain period
-// td:    time series times
-// xd:    time series values
-//
-// OUTPUT
-// xr:   resulting data-fit time series
-{
-	double *xr_best, r_best, r;
-	int kMin, kMax; // positions of the minimum and maximum, respectively
-	xr_best = ( double* )calloc( N, sizeof( double ) );
-	r_best = 0; for ( int i = 0; i < N; i++ ) r_best = r_best + xd[ i ] * xd[ i ];
-	for ( kMin = kMinA / step; kMin < kMinB / step; kMin++ )
-	{
-		printf( "minMaxReg kMin = %i\n", kMin );
- 		for ( kMax = kMaxA / step; kMax < min( kMin, kMaxB / step ); kMax++ ) // CASE: maximum comes first
-		{
-			// GENERATE AND SOLVE LP
-			IloEnv env;
-			IloModel model( env );
-			IloInt n = N;
-			IloNumVarArray x( env, n, -IloInfinity, IloInfinity );
-			//BUILD OBJECTIVE || x - xd  ||^2
-			IloExpr obj( env );
-			for ( int i = 0; i < n; i++ )
-			{
-				obj = obj + x[ i ] * x[ i ]
-		        		  - 2 * xd[ i ] * x[ i ]
-		     		      + xd[ i ] * xd[ i ];
-			}
-			model.add( IloMinimize( env, obj ) );
-			//BUILD CONSTRAINTS (apply discrete derivation limits)
-			for ( int i = 0; i < kMax; i++ )
-			{
-				model.add( x[ i + 1 ] - x[ i ] >= 0 );
-				model.add( x[ i + 1 ] - x[ i ] <= dMax * ( td[ i + 1 ] - td[ i ] ) );
-			}
-			for ( int i = kMax; i < kMin; i++ )
-			{
-				model.add( x[ i + 1 ] - x[ i ] >= dMin * ( td[ i + 1 ] - td[ i ] ) );
-				model.add( x[ i + 1 ] - x[ i ] <= 0 );
-			}
-			for ( int i = kMin; i < n - 1; i++ )
-			{
-				model.add( x[ i + 1 ] - x[ i ] >= 0 );
-				model.add( x[ i + 1 ] - x[ i ] <= dMax * ( td[ i + 1 ] - td[ i ] ) );
-			}
-			if ( T > 0 )
-			{
-				model.add( x[ 0 ] - x[ n - 1 ] >= 0 );
-				model.add( x[ 0 ] - x[ n - 1 ] <= dMax * ( T + td[ 0 ] - td[ n - 1 ] ) );
-			}
-			//SOLVE MODEL USING CPLEX
-			IloCplex cplex( model );
-			cplex.setOut( env.getNullStream() );
-			cplex.solve();
-			//OBTAIN SOLUTION AND UPDATE BEST SOLUTION IF NECESSARY
-			r = ( double )cplex.getObjValue();
-			if ( r < r_best )
-			{
-				r_best = r;
-				for ( int i = 0; i < N; i++ )
-				{
-					xr_best[ i ] = ( double )cplex.getValue( x[ i ] );
-				}
-			}
-			env.end();
-		}
-		for ( kMax = max( kMin + 1, kMaxA / step ); kMax < kMaxB / step; kMax++ ) // CASE: minimum comes first
-		{
-			// GENERATE AND SOLVE LP
-			IloEnv env;
-			IloModel model( env );
-			IloInt n = N;
-			IloNumVarArray x( env, n, -IloInfinity, IloInfinity );
-			//BUILD OBJECTIVE || x - xd  ||^2
-			IloExpr obj( env );
-			for ( int i = 0; i < n; i++ )
-			{
-				obj = obj + x[ i ] * x[ i ]
-		        		  - 2 * xd[ i ] * x[ i ]
-		     		      + xd[ i ] * xd[ i ];
-			}
-			model.add( IloMinimize( env, obj ) );
-			//BUILD CONSTRAINTS (apply discrete derivation limits)
-			for ( int i = 0; i < kMin; i++ )
-			{
-				model.add( x[ i + 1 ] - x[ i ] >= dMin * ( td[ i + 1 ] - td[ i ] ) );
-				model.add( x[ i + 1 ] - x[ i ] <= 0 );
-			}
-			for ( int i = kMin; i < kMax; i++ )
-			{
-				model.add( x[ i + 1 ] - x[ i ] >= 0 );
-				model.add( x[ i + 1 ] - x[ i ] <= dMax * ( td[ i + 1 ] - td[ i ] ) );
-			}
-			for ( int i = kMax; i < n - 1; i++ )
-			{
-				model.add( x[ i + 1 ] - x[ i ] >= dMin * ( td[ i + 1 ] - td[ i ] ) );
-				model.add( x[ i + 1 ] - x[ i ] <= 0 );
-			}
-			if ( T > 0 )
-			{
-				model.add( x[ 0 ] - x[ n - 1 ] >= dMin * ( T + td[ 0 ] - td[ n - 1 ] ) );
-				model.add( x[ 0 ] - x[ n - 1 ] <= 0 );
-			}
-			//SOLVE MODEL USING CPLEX
-			IloCplex cplex( model );
-			cplex.setOut( env.getNullStream() );
-			cplex.solve();
-			//OBTAIN SOLUTION AND UPDATE BEST SOLUTION IF NECESSARY
-			r = ( double )cplex.getObjValue();
-			if ( r < r_best )
-			{
-				r_best = r;
-				for ( int i = 0; i < N; i++ )
-				{
-					xr_best[ i ] = ( double )cplex.getValue( x[ i ] );
-				}
-			}
-			env.end();
-		}
-	}
-	for ( int i = 0; i < N; i++ )
-	{
-		xr[ i ] = xr_best[ i ];
-	}
-	free( xr_best );
-	return( r_best );
-}
-
 double lpmrPartition( int N, int k, double dMin, double dMax, bool considerSteepness, double *td, double *xd, int *T )
 // (nearly) optimum partition for piecewise monotonic regression
 // with bounded steepness, using dynamic programming algorithm [DP91]
@@ -986,6 +733,258 @@ double lpmr( int N, int k, int mode, double dMin, double dMax, bool considerStee
 	free( T );
 	free( T2 );
 	return( r );
+}
+
+/**************** ROUTINES THAT (OPTIONALLY) USE CPLEX **********************/
+
+double isoReg( int N, int sign, double *td, double *xd, double *xr )
+// regression by an isotonic function (using QP formulation and CPLEX)
+// The Pool Adjacency Violators Algorithm "PAV" does the same faster
+//
+// INPUT
+// N: length of the time series that is to be fit
+// sign: indicates if fit must be monotonically increasing (sign=1)
+//       or monotonically decreasing (sign=-1)
+// td: time series times
+// xd: time series values
+// hd: optional offsets, i.e. we solve
+//        min_{xr} sum_{i in [N]}( xd_i - xr_i )^2
+//        s.t. xd_i <= xd_{i+1} <= xd_i
+//            [xd_i >= xd_{i+1} >= xd_i]
+// 
+// OUTPUT
+// xr: resulting data-fit time series
+{
+	if ( sign != -1 ) sign = 1;
+	IloEnv env;
+	IloModel model( env );
+	IloInt n = N;
+	IloNumVarArray x( env, n, -IloInfinity, IloInfinity );
+	//BUILD OBJECTIVE || x - xd ||^2
+	IloExpr obj( env );
+	for ( int i = 0; i < n; i++ )
+	{
+		obj = obj + x[ i ] * x[ i ]
+		          - 2 * xd[ i ] * x[ i ]
+		          + xd[ i ] * xd[ i ];
+	}
+	model.add( IloMinimize( env, obj ) );
+	//BUILD CONSTRAINTS x_i <= x_{i+1}
+	for ( int i = 0; i < n - 1; i++ )
+	{
+		if ( sign == 1 )
+		{
+			model.add( x[ i ] <= x[ i + 1 ] );
+		}
+		else
+		{
+			model.add( x[ i ] >= x[ i + 1 ] );
+		}
+	}
+	//SOLVE MODEL USING CPLEX
+	IloCplex cplex( model );
+	cplex.setOut( env.getNullStream() );
+	cplex.solve();
+	//OBTAIN/STATE SOLUTION
+	double f = ( double )cplex.getObjValue();
+	for ( int i = 0; i < n; i++ )
+	{
+			xr[ i ] = ( double )cplex.getValue( x[ i ] );
+	}
+	env.end();
+	return( f );
+}
+
+double slopeReg( int N1, int N2, double dMin, double dMax, double *td, double *xd, double *xr )
+// regression by a function that has limited slope
+// generalization of isoReg
+//
+// INPUT
+// dMin: supposed minimum first derivation of the regression function
+// dMax: supposed maximum first derivation of the regression function
+// td: time series times
+// xd: time series values
+//
+// OUTPUT
+// xr: resulting data-fit time series
+{
+	IloEnv env;
+	IloModel model( env );
+	IloInt n = N2 + 1 - N1;
+	IloNumVarArray x( env, n, -IloInfinity, IloInfinity );
+	//BUILD OBJECTIVE || x - xd  ||^2
+	IloExpr obj( env );
+	for ( int i = 0; i < n; i++ )
+	{
+		obj = obj + x[ i ] * x[ i ]
+		          - 2 * xd[ N1 + i ] * x[ i ]
+		          + xd[ N1 + i ] * xd[ N1 + i ];
+	}
+	model.add( IloMinimize( env, obj ) );
+	//BUILD CONSTRAINTS (apply discrete derivation limits)
+	for ( int i = 0; i < n - 1; i++ )
+	{
+		double c = 1 / ( td[ N1 + i + 1 ] - td[ N1 + i ] );
+		model.add( c * ( x[ i + 1 ] - x[ i ] ) >= dMin );
+		model.add( c * ( x[ i + 1 ] - x[ i ] ) <= dMax );
+	}
+	//SOLVE MODEL USING CPLEX
+	IloCplex cplex( model );
+	cplex.setOut( env.getNullStream() );
+	cplex.solve();
+	//OBTAIN/STATE SOLUTION
+	double f = ( double )cplex.getObjValue();
+	for ( int i = 0; i < n; i++ )
+	{
+			xr[ N1 + i ] = ( double )cplex.getValue( x[ i ] );
+	}
+	env.end();
+	return( f );
+}
+
+double minMaxReg( int N, int kMinA, int kMinB, int kMaxA, int kMaxB, int step, double dMin, double dMax, double T, double *td, double *xd, double *xr )
+// regression by a series that has limited slope
+// and exactly one local minimum and exactly one local maximum,
+// optionally being periodic
+//
+// INPUT
+// N:     time series length
+// kMinA, kMinB, kMaxA, kMaxB:
+//        minimum and maximum of the series are supposed to appear in the interval
+//        [kMinA, kMinB-1] and [kMaxA, kMaxB-1], repsectively
+// step:  step size used for sampling *td and *xd
+//        only important for experiments with restricted scopes for min/max
+// dMin:  supposed lower bound on the first derivation of the regression function
+// dMax:  supposed upper bound on the first derivation of the regression function
+// T:     period of the model
+//        for T > 0, the data is assumed to be the samples for one period T
+//        for T <= 0, the data is not assumed to cover a certain period
+// td:    time series times
+// xd:    time series values
+//
+// OUTPUT
+// xr:   resulting data-fit time series
+{
+	double *xr_best, r_best, r;
+	int kMin, kMax; // positions of the minimum and maximum, respectively
+	xr_best = ( double* )calloc( N, sizeof( double ) );
+	r_best = 0; for ( int i = 0; i < N; i++ ) r_best = r_best + xd[ i ] * xd[ i ];
+	for ( kMin = kMinA / step; kMin < kMinB / step; kMin++ )
+	{
+		printf( "minMaxReg kMin = %i\n", kMin );
+ 		for ( kMax = kMaxA / step; kMax < min( kMin, kMaxB / step ); kMax++ ) // CASE: maximum comes first
+		{
+			// GENERATE AND SOLVE LP
+			IloEnv env;
+			IloModel model( env );
+			IloInt n = N;
+			IloNumVarArray x( env, n, -IloInfinity, IloInfinity );
+			//BUILD OBJECTIVE || x - xd  ||^2
+			IloExpr obj( env );
+			for ( int i = 0; i < n; i++ )
+			{
+				obj = obj + x[ i ] * x[ i ]
+		        		  - 2 * xd[ i ] * x[ i ]
+		     		      + xd[ i ] * xd[ i ];
+			}
+			model.add( IloMinimize( env, obj ) );
+			//BUILD CONSTRAINTS (apply discrete derivation limits)
+			for ( int i = 0; i < kMax; i++ )
+			{
+				model.add( x[ i + 1 ] - x[ i ] >= 0 );
+				model.add( x[ i + 1 ] - x[ i ] <= dMax * ( td[ i + 1 ] - td[ i ] ) );
+			}
+			for ( int i = kMax; i < kMin; i++ )
+			{
+				model.add( x[ i + 1 ] - x[ i ] >= dMin * ( td[ i + 1 ] - td[ i ] ) );
+				model.add( x[ i + 1 ] - x[ i ] <= 0 );
+			}
+			for ( int i = kMin; i < n - 1; i++ )
+			{
+				model.add( x[ i + 1 ] - x[ i ] >= 0 );
+				model.add( x[ i + 1 ] - x[ i ] <= dMax * ( td[ i + 1 ] - td[ i ] ) );
+			}
+			if ( T > 0 )
+			{
+				model.add( x[ 0 ] - x[ n - 1 ] >= 0 );
+				model.add( x[ 0 ] - x[ n - 1 ] <= dMax * ( T + td[ 0 ] - td[ n - 1 ] ) );
+			}
+			//SOLVE MODEL USING CPLEX
+			IloCplex cplex( model );
+			cplex.setOut( env.getNullStream() );
+			cplex.solve();
+			//OBTAIN SOLUTION AND UPDATE BEST SOLUTION IF NECESSARY
+			r = ( double )cplex.getObjValue();
+			if ( r < r_best )
+			{
+				r_best = r;
+				for ( int i = 0; i < N; i++ )
+				{
+					xr_best[ i ] = ( double )cplex.getValue( x[ i ] );
+				}
+			}
+			env.end();
+		}
+		for ( kMax = max( kMin + 1, kMaxA / step ); kMax < kMaxB / step; kMax++ ) // CASE: minimum comes first
+		{
+			// GENERATE AND SOLVE LP
+			IloEnv env;
+			IloModel model( env );
+			IloInt n = N;
+			IloNumVarArray x( env, n, -IloInfinity, IloInfinity );
+			//BUILD OBJECTIVE || x - xd  ||^2
+			IloExpr obj( env );
+			for ( int i = 0; i < n; i++ )
+			{
+				obj = obj + x[ i ] * x[ i ]
+		        		  - 2 * xd[ i ] * x[ i ]
+		     		      + xd[ i ] * xd[ i ];
+			}
+			model.add( IloMinimize( env, obj ) );
+			//BUILD CONSTRAINTS (apply discrete derivation limits)
+			for ( int i = 0; i < kMin; i++ )
+			{
+				model.add( x[ i + 1 ] - x[ i ] >= dMin * ( td[ i + 1 ] - td[ i ] ) );
+				model.add( x[ i + 1 ] - x[ i ] <= 0 );
+			}
+			for ( int i = kMin; i < kMax; i++ )
+			{
+				model.add( x[ i + 1 ] - x[ i ] >= 0 );
+				model.add( x[ i + 1 ] - x[ i ] <= dMax * ( td[ i + 1 ] - td[ i ] ) );
+			}
+			for ( int i = kMax; i < n - 1; i++ )
+			{
+				model.add( x[ i + 1 ] - x[ i ] >= dMin * ( td[ i + 1 ] - td[ i ] ) );
+				model.add( x[ i + 1 ] - x[ i ] <= 0 );
+			}
+			if ( T > 0 )
+			{
+				model.add( x[ 0 ] - x[ n - 1 ] >= dMin * ( T + td[ 0 ] - td[ n - 1 ] ) );
+				model.add( x[ 0 ] - x[ n - 1 ] <= 0 );
+			}
+			//SOLVE MODEL USING CPLEX
+			IloCplex cplex( model );
+			cplex.setOut( env.getNullStream() );
+			cplex.solve();
+			//OBTAIN SOLUTION AND UPDATE BEST SOLUTION IF NECESSARY
+			r = ( double )cplex.getObjValue();
+			if ( r < r_best )
+			{
+				r_best = r;
+				for ( int i = 0; i < N; i++ )
+				{
+					xr_best[ i ] = ( double )cplex.getValue( x[ i ] );
+				}
+			}
+			env.end();
+		}
+	}
+	for ( int i = 0; i < N; i++ )
+	{
+		xr[ i ] = xr_best[ i ];
+	}
+	free( xr_best );
+	return( r_best );
 }
 
 double lpmrIQP( int N, int nMin, int nMax, int sign, double dMin, double dMax, double T, double *td, double *xd, double *xr )

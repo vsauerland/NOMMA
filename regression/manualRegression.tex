@@ -1,0 +1,99 @@
+\documentclass[a4paper]{article}
+\usepackage{amsmath,amssymb,latexsym,graphicx,csquotes}
+
+\setlength{\parindent}{0cm} \setlength{\parskip}{0cm} \sloppy
+\markright{chapter}
+
+
+\begin{document}
+
+\begin{titlepage}
+\setlength{\topmargin}{8cm}
+\begin{center}
+ \Huge NOMMA 1.0\\
+ \vspace{1cm}
+ \Large Non-Parametric Optimization Methods\\
+		for Model Assessment\\
+ \vspace{1cm}
+ \normalsize Volkmar Sauerland\\
+ Kiel University\\
+ \vspace{1cm}
+ \Large December 2017 \\
+\end{center}
+\end{titlepage}
+
+\section{\label{intro}Introduction}
+NOMMA 1.0 provides C++ implementations
+of a couple of non-parametric regression methods.
+The regression methods are of interest on their own
+but also useful for the assessment of parametric models~\cite{SLL+17}
+since they can provide lower error bounds on them.\par
+There are two subfolders \texttt{regression} and \texttt{regressionCPX}.
+The first folder contains implementations of tailored algorithms
+for certain non-parametric regression types~\cite{BBBB72,DP91,YW09}.
+These implementations do not require third party software to be installed.
+The folder \texttt{regressionCPX} contains an extension of the content
+in \texttt{regression}.
+The additional methods rely on direct formulations of regression problems
+in terms of \emph{quadratic programs (QPs)}.
+The QPs are build and solved using the third party software \emph{CPLEX},
+which must be installed on your system in order to use \texttt{regressionCPX}.\par
+\section{\label{usage}Usage}
+\subsection{Generating and Running Example Program}
+Both subfolders \texttt{} and \texttt{} contain the following files
+\begin{itemize}
+\item \texttt{Makefile}. On a LINUX platform with GNU g++ compiler,
+you can generate the executable \texttt{regEx} by typing \texttt{make}.
+\item \texttt{regEx.cpp}. The example main program reads
+observational data (an uni-variate time series)
+and applies some regression methods implemented in \texttt{regression.cpp}
+and writes obtained regression time series to output files.
+Each line of the input file (here \texttt{sineLikeNoise\_0.45\_200.dat})
+consist of two real numbers: a time value and an associated measurement value.
+The first column (the time values) must be sorted in increasing order.
+The output files have the same format as the input file.
+\item \texttt{regression.cpp/hpp}. Implements regression methods
+that are considered in our article~\cite{SLL+17}
+for the assessment of biogeochemical ocean models.
+\item \texttt{knot.cpp/hpp}. An auxiliary structure
+introduced in~\cite{YW09} and used to calculate
+\enquote{isotonic regression under Lipschitz constraint}.
+\item \texttt{sineLikeNoise\_0.45\_200.dat}. Data file with 200 samples
+of the function $\sin(t)+0.3\cdot \sin(t)+\mathcal{N}(0,0.45)$,
+serving as test observational data
+\end{itemize}
+After having generated the executable \texttt{regEx}
+(by typing \texttt{make}) you can type,
+e.g., \texttt{./regEx} to calculate
+some non-parametric regression time-series
+for the example data \texttt{sineLikeNoise\_0.45\_200.dat}.
+
+
+\subsection{Usage for Own Applications}
+
+
+
+REFERENCES
+----------
+
+[BBBB72] Barlow, R. E., Bartholomew, D. J., Bremmer, J. M., Brunk, H. D.
+         *Statistical Inference under order restrictions. The theory and
+         applications of isotonic regression*. John Wiley \& Sons, 1972
+
+[DP91]   I. C. Demetriou. M. J. D. Powell.
+         *Least Squares Smoothing of Univariate Data to achieve Piecewise
+         Monotonicity*.
+         IMA Journal of Numerical Analysis 11:411-432 (1991)
+         doi: 10.1093/imanum/11.3.411
+
+[YW09]   Yeganova, L., Wilbur, W. J.
+         *Isotonic Regression under Lipschitz Constraint*.
+         J. Optim. Theory Allp. 141:429-443 (2009)
+         doi: 10.1007/s10957-008-9477-0
+
+[SLL+17] Sauerland, V., Loeptien, U., Leonhard, C., Oschlies, A., Srivastav, A.
+         *Error assessment of biogeochemical models by lower bound methods*.
+         Geoscientific Model Development Discussions (2017)
+
+
+\end{document}

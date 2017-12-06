@@ -415,7 +415,7 @@ double lpmrPartition( int N, int k, double dMin, double dMax, bool considerSteep
 //
 // INPUT
 // N:    time series length
-// k:    number of local extremes
+// k:    number of monotonic segemnts
 // dMin: lower steepness bound (<0)
 // dMax: upper steepness bound (>0)
 // condiderSteepness: indicates if steepness bounds dMin, dMax are considered
@@ -628,7 +628,7 @@ double lpmr( int N, int k, int mode, double dMin, double dMax, bool considerStee
 //
 // INPUT
 // N:    time series length
-// k:    number of local extremes
+// k:    number of monotonic segments
 // mode: indicates how to choose the first segment of regression time series
 //        1: first segment is monotonically non-decreasing
 //       -1: first segment is monotonically non-increasing
@@ -747,10 +747,6 @@ double isoReg( int N, int sign, double *td, double *xd, double *xr )
 //       or monotonically decreasing (sign=-1)
 // td: time series times
 // xd: time series values
-// hd: optional offsets, i.e. we solve
-//        min_{xr} sum_{i in [N]}( xd_i - xr_i )^2
-//        s.t. xd_i <= xd_{i+1} <= xd_i
-//            [xd_i >= xd_{i+1} >= xd_i]
 // 
 // OUTPUT
 // xr: resulting data-fit time series

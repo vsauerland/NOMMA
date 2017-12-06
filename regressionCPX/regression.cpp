@@ -735,7 +735,7 @@ double lpmr( int N, int k, int mode, double dMin, double dMax, bool considerStee
 	return( r );
 }
 
-/**************** ROUTINES THAT (OPTIONALLY) USE CPLEX **********************/
+/**************** ROUTINES THAT USE CPLEX **********************/
 
 double isoReg( int N, int sign, double *td, double *xd, double *xr )
 // regression by an isotonic function (using QP formulation and CPLEX)
@@ -791,11 +791,12 @@ double isoReg( int N, int sign, double *td, double *xd, double *xr )
 	return( f );
 }
 
-double slopeReg( int N1, int N2, double dMin, double dMax, double *td, double *xd, double *xr )
+double slopeReg( int N, double dMin, double dMax, double *td, double *xd, double *xr )
 // regression by a function that has limited slope
 // generalization of isoReg
 //
 // INPUT
+// N: length of the time series that is to be fit
 // dMin: supposed minimum first derivation of the regression function
 // dMax: supposed maximum first derivation of the regression function
 // td: time series times
@@ -806,21 +807,21 @@ double slopeReg( int N1, int N2, double dMin, double dMax, double *td, double *x
 {
 	IloEnv env;
 	IloModel model( env );
-	IloInt n = N2 + 1 - N1;
+	IloInt n = N;
 	IloNumVarArray x( env, n, -IloInfinity, IloInfinity );
 	//BUILD OBJECTIVE || x - xd  ||^2
 	IloExpr obj( env );
 	for ( int i = 0; i < n; i++ )
 	{
 		obj = obj + x[ i ] * x[ i ]
-		          - 2 * xd[ N1 + i ] * x[ i ]
-		          + xd[ N1 + i ] * xd[ N1 + i ];
+		          - 2 * xd[ i ] * x[ i ]
+		          + xd[ i ] * xd[ i ];
 	}
 	model.add( IloMinimize( env, obj ) );
 	//BUILD CONSTRAINTS (apply discrete derivation limits)
 	for ( int i = 0; i < n - 1; i++ )
 	{
-		double c = 1 / ( td[ N1 + i + 1 ] - td[ N1 + i ] );
+		double c = 1 / ( td[ i + 1 ] - td[ i ] );
 		model.add( c * ( x[ i + 1 ] - x[ i ] ) >= dMin );
 		model.add( c * ( x[ i + 1 ] - x[ i ] ) <= dMax );
 	}
@@ -832,7 +833,7 @@ double slopeReg( int N1, int N2, double dMin, double dMax, double *td, double *x
 	double f = ( double )cplex.getObjValue();
 	for ( int i = 0; i < n; i++ )
 	{
-			xr[ N1 + i ] = ( double )cplex.getValue( x[ i ] );
+			xr[ i ] = ( double )cplex.getValue( x[ i ] );
 	}
 	env.end();
 	return( f );

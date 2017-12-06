@@ -842,7 +842,7 @@ double slopeReg( int N1, int N2, double dMin, double dMax, double *td, double *x
 	return( f );
 }
 
-double minMaxReg( int N, int kMinA, int kMinB, int kMaxA, int kMaxB, int step, double dMin, double dMax, double T, double *td, double *xd, double *xr )
+double minMaxReg( int N, int kMinA, int kMinB, int kMaxA, int kMaxB, double dMin, double dMax, double T, double *td, double *xd, double *xr )
 // regression by a series that has limited slope
 // and exactly one local minimum and exactly one local maximum,
 // optionally being periodic
@@ -852,8 +852,6 @@ double minMaxReg( int N, int kMinA, int kMinB, int kMaxA, int kMaxB, int step, d
 // kMinA, kMinB, kMaxA, kMaxB:
 //        minimum and maximum of the series are supposed to appear in the interval
 //        [kMinA, kMinB-1] and [kMaxA, kMaxB-1], repsectively
-// step:  step size used for sampling *td and *xd
-//        only important for experiments with restricted scopes for min/max
 // dMin:  supposed lower bound on the first derivation of the regression function
 // dMax:  supposed upper bound on the first derivation of the regression function
 // T:     period of the model
@@ -869,10 +867,10 @@ double minMaxReg( int N, int kMinA, int kMinB, int kMaxA, int kMaxB, int step, d
 	int kMin, kMax; // positions of the minimum and maximum, respectively
 	xr_best = ( double* )calloc( N, sizeof( double ) );
 	r_best = 0; for ( int i = 0; i < N; i++ ) r_best = r_best + xd[ i ] * xd[ i ];
-	for ( kMin = kMinA / step; kMin < kMinB / step; kMin++ )
+	for ( kMin = kMinA; kMin < kMinB; kMin++ )
 	{
 		printf( "minMaxReg kMin = %i\n", kMin );
- 		for ( kMax = kMaxA / step; kMax < min( kMin, kMaxB / step ); kMax++ ) // CASE: maximum comes first
+ 		for ( kMax = kMaxA; kMax < min( kMin, kMaxB ); kMax++ ) // CASE: maximum comes first
 		{
 			// GENERATE AND SOLVE LP
 			IloEnv env;
@@ -925,7 +923,7 @@ double minMaxReg( int N, int kMinA, int kMinB, int kMaxA, int kMaxB, int step, d
 			}
 			env.end();
 		}
-		for ( kMax = max( kMin + 1, kMaxA / step ); kMax < kMaxB / step; kMax++ ) // CASE: minimum comes first
+		for ( kMax = max( kMin + 1, kMaxA ); kMax < kMaxB; kMax++ ) // CASE: minimum comes first
 		{
 			// GENERATE AND SOLVE LP
 			IloEnv env;

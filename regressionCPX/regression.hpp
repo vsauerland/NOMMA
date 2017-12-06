@@ -33,7 +33,7 @@ double isoReg( int N, int sign, double *td, double *xd, double *xr );
 double slopeReg( int N1, int N2, double dMin, double dMax, double *td, double *xd, double *xr );
 // regression by a function that has limited slope (generalization of isoReg)
 
-double minMaxReg( int N, int kMinA, int kMinB, int kMaxA, int kMaxB, int step, double dMin, double dMax, double T, double *td, double *xd, double *xr );
+double minMaxReg( int N, int kMinA, int kMinB, int kMaxA, int kMaxB, double dMin, double dMax, double T, double *td, double *xd, double *xr );
 // regression by a (periodic) function that has limited slope and exactly one
 // local minimum and exactly one local maximum (per period)
 

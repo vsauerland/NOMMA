@@ -68,33 +68,34 @@ int main( int argc, char **argv )
 
 	printf( "-------------------------------------------------------------------------------\n\n" );
 
+	regression reg;
 	ofstream ofFile;
 
-	r = pav( n4, 1, td, xd, xr );
+	r = reg.pav( n4, 1, td, xd, xr );
 	printf( "PAV (mon. incr.) for 1st quarter: SSE = %f, RMSE = %f\n", r, sqrt( r / n4 ) );
 	ofFile.open( "regression_PAV_Q1.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";
 	ofFile.close();
 
-	r = isoReg( n4, 1, td, xd, xr );
+	r = reg.isoReg( n4, 1, td, xd, xr );
 	printf( "isoReg (mon. incr.) for 1st quarter: SSE = %f, RMSE = %f\n\n", r, sqrt( r / n4 ) );
 
-	r = pav( n4, -1, td + n4, xd + n4, xr );
+	r = reg.pav( n4, -1, td + n4, xd + n4, xr );
 	printf( "PAV (mon. decr.) for 2nd quarter: SSE = %f, RMSE = %f\n\n", r, sqrt( r / n4 ) );
 	ofFile.open( "regression_PAV_Q2.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";
 	ofFile.close();
 
-	r = lpav( n4, 1, L, td, xd, xr, false );
+	r = reg.lpav( n4, 1, L, td, xd, xr, false );
 	printf( "LPAV (mon. incr., L=%f) for 1st quarter: SSE = %f, RMSE = %f\n", L, r, sqrt( r / n4 ) );
 	ofFile.open( "regression_LPAV_Q1.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";
 	ofFile.close();
 
-	r = slopeReg( 0, n4 - 1, 0, L, td, xd, xr );
+	r = reg.slopeReg( n4, 0, L, td, xd, xr );
 	printf( "slopeReg (mon. incr., L=%f) for 1st quarter: SSE = %f, RMSE = %f\n\n", L, r, sqrt( r / n4 ) );
 
-	r = lpav( n4, -1, L, td + n4, xd + n4, xr, false );
+	r = reg.lpav( n4, -1, L, td + n4, xd + n4, xr, false );
 	printf( "LPAV (mon. decr., L=%f) for 2nd quarter: SSE = %f, RMSE = %f\n\n", L, r, sqrt( r / n4 ) );
 	ofFile.open( "regression_LPAV_Q2.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";
@@ -106,20 +107,20 @@ int main( int argc, char **argv )
 	int mode = 0; // 0: optimal, 1: begin increasing, -1: begin decreasing
 	bool considerL = false; // do not apply steepness bounds
 
-	r = slopeReg( 0, n - 1, -L, L, td, xd, xr );
+	r = reg.slopeReg( n, -L, L, td, xd, xr );
 	printf( "slopeReg (steepness in [-L,L]): SSE = %f, RMSE = %f\n\n", r, sqrt( r / n ) );
 	ofFile.open( "regression_Bounded_Steepness.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";
 	ofFile.close();
 
-	r = lpmr( n, k, mode, -L, L, considerL, td, xd, xr );
+	r = reg.lpmr( n, k, mode, -L, L, considerL, td, xd, xr );
 	printf( "PMR with %i \"extremes\": SSE = %f, RMSE = %f\n\n", k - 1, r, sqrt( r / n ) );
 	ofFile.open( "regression_PMR.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";
 	ofFile.close();
 
 	considerL = true; // apply steepness bounds, now
-	r = lpmr( n, k, mode, -L, L, considerL, td, xd, xr );
+	r = reg.lpmr( n, k, mode, -L, L, considerL, td, xd, xr );
 	printf( "LPMR with %i \"extremes\": SSE = %f, RMSE = %f\n\n", k - 1, r, sqrt( r / n ) );
 	ofFile.open( "regression_LPMR_2EX.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";
@@ -128,20 +129,20 @@ int main( int argc, char **argv )
 	printf( "-------------------------------------------------------------------------------\n\n" );
 
 	k = 5; // new number of monotonic pieces
-	r = lpmr( n, k, mode, -L, L, considerL, td, xd, xr );
+	r = reg.lpmr( n, k, mode, -L, L, considerL, td, xd, xr );
 	printf( "LPMR with %i \"extremes\": SSE = %f, RMSE = %f\n\n", k - 1, r, sqrt( r / n ) );
 	ofFile.open( "regression_LPMR_4EX.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";
 	ofFile.close();
 
 	double T = 6.2831853;
-	r = lpmrIQP( n, 1, 1, 0, -L, L, T, td, xd, xr );
+	r = reg.lpmrIQP( n, 1, 1, 0, -L, L, T, td, xd, xr );
 	printf( "LPMR_IQP with 2 extremes: SSE = %f, RMSE = %f\n\n", r, sqrt( r / n ) );
 	ofFile.open( "regression_LPMR_IQP_2EX.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";
 	ofFile.close();
 
-	r = lpmrIQP( n, 2, 2, 0, -L, L, T, td, xd, xr );
+	r = reg.lpmrIQP( n, 2, 2, 0, -L, L, T, td, xd, xr );
 	printf( "LPMR_IQP with 4 extremes: SSE = %f, RMSE = %f\n\n", r, sqrt( r / n ) );
 	ofFile.open( "regression_LPMR_IQP_4EX.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";

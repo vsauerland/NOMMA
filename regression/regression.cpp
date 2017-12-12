@@ -1,8 +1,6 @@
 #include "regression.hpp" 
 
-using namespace std;
-
-double pav( int N, int sign, double *td, double *xd, double *xr )
+double regression::pav( int N, int sign, double *td, double *xd, double *xr )
 // regression by an isotonic function,
 // using "pool adjacent violators (PAV) algorithm" [BBBB72]
 //
@@ -85,7 +83,7 @@ double pav( int N, int sign, double *td, double *xd, double *xr )
     return( r );
 }
 
-void pavKnots( vector< Knot > &knots, int *g, int *f, int *b, double *xd, bool inform )
+void regression::pavKnots( vector< Knot > &knots, int *g, int *f, int *b, double *xd, bool inform )
 // the "pool adjacent violators (PAV) algorithm" adaption to knots [YW09]
 //
 // ATTENTION: This implementation as base for the LPAV algorithm
@@ -227,7 +225,7 @@ void pavKnots( vector< Knot > &knots, int *g, int *f, int *b, double *xd, bool i
 	free( v );
 }
 
-double lpav( int N, int sign, double L, double *td, double *xd, double *xr, bool inform )
+double regression::lpav( int N, int sign, double L, double *td, double *xd, double *xr, bool inform )
 // regression by an isotonic function with limited steepness
 // using "Lipschitz pool adjacent violators (LPAV) algorithm" [YW09]
 //
@@ -400,7 +398,7 @@ double lpav( int N, int sign, double L, double *td, double *xd, double *xr, bool
 	return( r );
 }
 
-double lpmrPartition( int N, int k, double dMin, double dMax, bool considerSteepness, double *td, double *xd, int *T )
+double regression::lpmrPartition( int N, int k, double dMin, double dMax, bool considerSteepness, double *td, double *xd, int *T )
 // (nearly) optimum partition for piecewise monotonic regression
 // with bounded steepness, using dynamic programming algorithm [DP91]
 //
@@ -613,7 +611,7 @@ double lpmrPartition( int N, int k, double dMin, double dMax, bool considerSteep
 	return( r );
 }
 
-double lpmr( int N, int k, int mode, double dMin, double dMax, bool considerSteepness, double *td, double *xd, double *xr )
+double regression::lpmr( int N, int k, int mode, double dMin, double dMax, bool considerSteepness, double *td, double *xd, double *xr )
 // (nearly) optimum piecewise monotonic regression with bounded steepness
 // using dynamic programming algorithm (lpmrPartition) [DP91]
 //

@@ -71,13 +71,13 @@ int main( int argc, char **argv )
 	regression reg;
 	ofstream ofFile;
 
-	r = reg.pav( n4, 1, td, xd, xr );
+	r = reg.pav( n4, 1, xd, xr );
 	printf( "PAV (mon. incr.) for 1st quarter: SSE = %f, RMSE = %f\n\n", r, sqrt( r / n4 ) );
 	ofFile.open( "regression_PAV_Q1.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";
 	ofFile.close();
 
-	r = reg.pav( n4, -1, td + n4, xd + n4, xr );
+	r = reg.pav( n4, -1, xd + n4, xr );
 	printf( "PAV (mon. decr.) for 2nd quarter: SSE = %f, RMSE = %f\n\n", r, sqrt( r / n4 ) );
 	ofFile.open( "regression_PAV_Q2.txt" );
 	for ( int i = 0; i < n; i++ ) ofFile << td[ i ] << " " << xr[ i ] << "\n";

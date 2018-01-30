@@ -463,7 +463,7 @@ double regression::lpmrPartition( int N, int k, double dMin, double dMax, bool c
 				double value;
 				if ( !considerSteepness ) // original pmr algorithm [DP91] case
 				{
-					value = pav( q + 1 - p, 1, td + p, xd + p, xr + p );
+					value = pav( q + 1 - p, 1, xd + p, xr + p );
 				}
 				else if ( p == 0 )
 				{
@@ -490,7 +490,7 @@ double regression::lpmrPartition( int N, int k, double dMin, double dMax, bool c
 				double value;
 				if ( !considerSteepness ) // original pmr algorithm [DP91] case
 				{
-					value = pav( q + 1 - p, -1, td + p, xd + p, xr + p );
+					value = pav( q + 1 - p, -1, xd + p, xr + p );
 				}
 				else if ( p == 0 )
 				{
@@ -675,7 +675,7 @@ double regression::lpmr( int N, int k, int mode, double dMin, double dMax, bool 
 	{
 		if ( !considerSteepness )
 		{
-			r = r + pav( q + 1 - p, 1, td + p, xd + p, xr + p );
+			r = r + pav( q + 1 - p, 1, xd + p, xr + p );
 		}
 		else // ( considerSteepness )
 		{
@@ -686,7 +686,7 @@ double regression::lpmr( int N, int k, int mode, double dMin, double dMax, bool 
 	{
 		if ( !considerSteepness )
 		{
-			r = r + pav( q + 1 - p, -1, td + p, xd + p, xr + p );
+			r = r + pav( q + 1 - p, -1, xd + p, xr + p );
 		}
 		else // ( considerSteepness )
 		{
@@ -702,7 +702,7 @@ double regression::lpmr( int N, int k, int mode, double dMin, double dMax, bool 
 		{
 			if ( !considerSteepness )
 			{
-				r = r + pav( q - p, 1, td + p + 1, xd + p + 1, xr + p + 1 );
+				r = r + pav( q - p, 1, xd + p + 1, xr + p + 1 );
 			}
 			else // ( considerSteepness )
 			{
@@ -713,7 +713,7 @@ double regression::lpmr( int N, int k, int mode, double dMin, double dMax, bool 
 		{
 			if ( !considerSteepness )
 			{
-				r = r + pav( q - p, -1, td + p + 1, xd + p + 1, xr + p + 1 );
+				r = r + pav( q - p, -1, xd + p + 1, xr + p + 1 );
 			}
 			else // ( considerSteepness )
 			{

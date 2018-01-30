@@ -57,6 +57,6 @@ regression.o: regression.cpp
 knot.o: knot.cpp
 	$(CCC) -c $(CCFLAGS) knot.cpp -o knot.o $(CCLNFLAGS)
 globalBound: globalBound.o regression.o knot.o
-	$(CCC) $(CCOPT) globalBound.o regression.o knot.o -o globalBound $(CCLNFLAGS)
+	$(CCC) $(CCOPT) globalBound.o regression.o knot.o -o globalBound $(CCLNFLAGS) -lnetcdf
 globalBound.o: globalBound.cpp
 	$(CCC) -c $(CCFLAGS) globalBound.cpp -o globalBound.o $(CCLNFLAGS)

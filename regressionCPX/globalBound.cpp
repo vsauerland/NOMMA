@@ -8,7 +8,7 @@
 // time averaged observations: 4320 x 2160
 #define FILE_NAME_OBS "climatology_time_averaged.nc"
 // time averaged and interpolated model output: 4320 x 2160
-#define FILE_NAME_MOD "chl_8d_fmcd_interpolated_ferret.nc"
+#define FILE_NAME_MOD "chl_8d_fmcd_interpolated.nc"
 #define NX 4320
 #define NY 2160
 

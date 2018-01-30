@@ -19,7 +19,7 @@ class regression
 	// optimum partition for piecewise monotonic regression with (optional) steepness bounds
 
 	public:
-	double pav( int N, int sign, double *td, double *xd, double *xr );
+	double pav( int N, int sign, double *xd, double *xr );
 	// regression by an isotonic function
 	double lpav( int N, int sign, double L, double *td, double *xd, double *xr, bool inform );
 	// regression by an isotonic function with steepness bound

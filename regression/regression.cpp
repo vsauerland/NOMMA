@@ -1,6 +1,6 @@
 #include "regression.hpp" 
 
-double regression::pav( int N, int sign, double *td, double *xd, double *xr )
+double regression::pav( int N, int sign, double *xd, double *xr )
 // regression by an isotonic function,
 // using "pool adjacent violators (PAV) algorithm" [BBBB72]
 //
@@ -8,7 +8,6 @@ double regression::pav( int N, int sign, double *td, double *xd, double *xr )
 // N: length of the time series that is to be fit
 // sign: indicates if fit must be monotonically increasing (sign=1)
 //       or monotonically decreasing (sign=-1)
-// td: time series times
 // xd: time series values
 // 
 // OUTPUT
